@@ -2,53 +2,37 @@ name: Build Masscan Binary
 
 # Déclencheurs du workflow
 on:
-  # Permet le lancement manuel depuis l'interface GitHub
   workflow_dispatch:
-  
-  # Se déclenche automatiquement quand tu pousses sur la branche main
   push:
     branches: [ "main" ]
-  
-  # Se déclenche quand tu crées une release
   release:
     types: [ "created" ]
 
 jobs:
   build:
-    # Utilise la dernière version d'Ubuntu
     runs-on: ubuntu-latest
     
     steps:
-      # 1. Récupère le code source de Masscan
       - name: Checkout code
         uses: actions/checkout@v4
       
-      # 2. Installe les dépendances nécessaires pour compiler Masscan
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y git make gcc libpcap-dev
       
-      # 3. Compile Masscan en utilisant tous les cœurs disponibles
       - name: Build Masscan
         run: make -j$(nproc)
       
-      # 4. Vérifie que le binaire a bien été créé
-      - name: Verify binary
-        run: |
-          ls -la bin/
-          file bin/masscan
-          ./bin/masscan --version
-      
-      # 5. Sauvegarde le binaire en tant qu'artifact (téléchargeable depuis l'onglet Actions)
+      # Sauvegarde le binaire en tant qu'artifact
       - name: Upload binary as artifact
         uses: actions/upload-artifact@v4
         with:
           name: masscan-linux-x86_64
           path: bin/masscan
-          retention-days: 30  # Garde l'artifact 30 jours
+          retention-days: 30
       
-      # 6. Si c'est une release, attache automatiquement le binaire à la release
+      # Si c'est une release, attache le binaire à la release
       - name: Upload binary to release
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
@@ -58,19 +42,3 @@ jobs:
           asset_name: masscan-linux-x86_64
           tag: ${{ github.ref }}
           overwrite: true
-      
-      # 7. Optionnel: créer une archive avec le binaire et les docs
-      - name: Create archive
-        run: |
-          mkdir -p masscan-package
-          cp bin/masscan masscan-package/
-          cp README.md masscan-package/ 2>/dev/null || true
-          cp LICENSE masscan-package/ 2>/dev/null || true
-          tar -czf masscan-linux-x86_64.tar.gz -C masscan-package .
-      
-      - name: Upload archive as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: masscan-archive
-          path: masscan-linux-x86_64.tar.gz
-          retention-days: 30
