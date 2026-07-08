@@ -1,0 +1,41 @@
+name: Build Masscan Binary
+
+# Déclenche le workflow quand tu pousses sur main ou quand tu crées une release
+on:
+  push:
+    branches: [ "main" ]
+  release:
+    types: [ "created" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (ton fork ou le code original)
+        uses: actions/checkout@v4
+
+      # Installation des dépendances système nécessaires pour la compilation
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y git make gcc libpcap-dev
+
+      # Compilation de Masscan
+      - name: Build Masscan
+        run: make -j$(nproc)
+
+      # Upload du binaire en tant qu'Artifact pour le télécharger facilement
+      - name: Upload binary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: masscan-bin
+          path: bin/masscan
+
+      # Si c'est une release, on attache aussi le binaire à la release
+      - name: Upload binary to release
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: bin/masscan
+          asset_name: masscan-linux-x86_64
+          tag: ${{ github.ref }}
+          overwrite: true
